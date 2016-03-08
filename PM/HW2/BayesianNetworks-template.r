@@ -5,6 +5,53 @@
 ## probs: vector of probabilities for the flattened probability table
 ## levelsList: a list containing a vector of levels (outcomes) for each variable
 ## See the BayesNetExamples.r file for examples of how this function works
+
+
+createBayesNet = function()
+{
+  var = c("income")
+  A = createCPT.fromData(y,var)
+  
+  
+  var =  c("smoke","income")
+  B = createCPT.fromData(y,var)
+  
+  
+  var = c("cholesterol", "income","smoke","exercise")
+  C = createCPT.fromData(y,var)
+  
+  
+  var = c("bp", "income","smoke","exercise")
+  D = createCPT.fromData(y,var)
+  
+  
+  var = c("exercise", "income")
+  E = createCPT.fromData(y,var)
+  
+  
+  var = c("bmi", "income","exercise")
+  F = createCPT.fromData(y,var)
+  
+  
+  var = c("diabetes", "bmi")
+  G = createCPT.fromData(y,var)
+  
+  
+  var = c("stroke", "bmi","bp","cholesterol")
+  H = createCPT.fromData(y,var)
+  
+  
+  var = c("attack", "bmi","bp","cholesterol")
+  I = createCPT.fromData(y,var)
+  
+  
+  var = c("angina", "bmi","bp","cholesterol")
+  J = createCPT.fromData(y,var)
+  
+  
+  bayesNet = list("1" = A, "2" = B, "3" = C, "d" = D, "e" = E, "f" = F, "g" = G, "h" = H, "i" = I, "j" = J)
+  return(bayesNet)
+}
 createCPT = function(varnames, probs, levelsList)
 {
   ## Check dimensions agree
@@ -109,7 +156,8 @@ productFactor = function(A, B)
   x = names(A)
   y = names(B)
   x<-x[-which(x=="probs")]
-  y<-x[-which(y=="probs")]
+  y<-y[-which(y=="probs")]
+  #z<-intersect(x,y)
   mergedTable = merge( A,B, by = intersect(x,y) )
   mergedTable= transform(mergedTable, probs = probs.x * probs.y)
   mergedTable = subset(mergedTable,select = -c(probs.x, probs.y))
@@ -135,6 +183,44 @@ marginalizeFactor = function(X, margVar)
   return(marginalizedCPT)
 }
 
+marginalizebyElimination = function(bayesNet, margVar)
+{
+  marginalizeBayesNet <- {}
+  j <- 0
+  factorlist<- {}
+  lapply(bayesNet,function(x)
+  {
+    hj <- intersect(colnames(x), margVar)
+    j <<- j +1
+    if(length(hj)>0)
+    {
+      factorlist <<- append(factorlist, list(x))
+      bayesNet <<- bayesNet[-j]
+      j <<- j-1
+      #print(length(bayesNet))
+    }
+  })
+  
+ # print(bayesNet)
+  if(length(factorlist) > 0)
+  {
+    marginalizeBayesNet<- factorlist[[1]]  
+    if(length(factorlist) > 1)
+    {
+      for(k in 2:length(factorlist))
+      {
+        marginalizeBayesNet <- productFactor(factorlist[[k-1]], factorlist[[k]])
+        factorlist[[k]] <- marginalizeBayesNet
+      }
+    }  
+    marginalizeBayesNet <- marginalizeFactor(marginalizeBayesNet, margVar)
+    bayesNet <- append(bayesNet, list(marginalizeBayesNet))
+    
+  }
+  return(bayesNet)
+}
+
+
 ## Marginalize a list of variables
 ## bayesnet: a list of factor tables
 ## margVars: a vector of variable names (as strings) to be marginalized
@@ -143,7 +229,12 @@ marginalizeFactor = function(X, margVar)
 ## when the list of variables in margVars is marginalized out of bayesnet.
 marginalize = function(bayesnet, margVars)
 {
-  ## Your code here!
+  for(i in 1:length(margVars))
+  {  
+    print(margVars[i])
+    bayesnet <- marginalizebyElimination(bayesnet, margVars[i])
+  }
+  return(bayesnet)
 }
 
 ## Observe values for a set of variables
@@ -151,12 +242,30 @@ marginalize = function(bayesnet, margVars)
 ## obsVars: a vector of variable names (as strings) to be observed
 ## obsVals: a vector of values for corresponding variables (in the same order)
 ##
-## Set the values of the observed variables. Other values for the variables
+  ## Set the values of the observed variables. Other values for the variables
 ## should be removed from the tables. You do not need to normalize the factors
 ## to be probability mass functions.
 observe = function(bayesnet, obsVars, obsVals)
 {
   ## Your code here!
+  observe = function(bayesnet, obsVars, obsVals){
+    ## Your code here!
+    return(lapply(bayesnet, function(x){
+      listVars <- intersect(colnames(x), obsVars)
+      #print(listVars)
+      locations <- which(obsVars %in% listVars)
+      listVals <- obsVals[locations]
+      tempNet <- x
+      n <- length(listVars)
+      if(n > 0){
+        for(i in 1:n){
+          tempNet <- tempNet[tempNet[, listVars[i]] == listVals[i],] 
+        }
+      }
+      tempNet
+    }))
+  }
+  
 }
 
 ## Run inference on a Bayesian network
@@ -177,8 +286,9 @@ infer = function(bayesnet, margVars, obsVars, obsVals)
   ## Your code here!
 }
 
-y = read.csv("/media/yogesh/19AB173F35236A3F/Courses/PM/HW2/RiskFactors.csv")
-print (y$income)
+
+y = read.csv("/media/yogesh/19AB173F35236A3F/Courses/Spring-2016/PM/HW2/RiskFactors.csv")
+
 
 s.i = createCPT.fromData(y, c("smoke", "income"))
 var = c("income")
@@ -186,4 +296,11 @@ i = createCPT.fromData(y, var)
 X <- productFactor(s.i,i)
 margVar = "smoke"
 Y <-marginalizeFactor(X, margVar)
-print(Y)
+
+
+bayesNet1 <- createBayesNet()
+var = c("income", "exercise", "smoke", "bmi", "attack", "diabetes", "cholesterol", "angina", "stroke")
+bayesNet1 <- marginalize(bayesNet1, var)
+
+
+
