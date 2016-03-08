@@ -245,10 +245,7 @@ marginalize = function(bayesnet, margVars)
   ## Set the values of the observed variables. Other values for the variables
 ## should be removed from the tables. You do not need to normalize the factors
 ## to be probability mass functions.
-observe = function(bayesnet, obsVars, obsVals)
-{
-  ## Your code here!
-  observe = function(bayesnet, obsVars, obsVals){
+observe = function(bayesnet, obsVars, obsVals){
     ## Your code here!
     return(lapply(bayesnet, function(x){
       listVars <- intersect(colnames(x), obsVars)
@@ -266,7 +263,7 @@ observe = function(bayesnet, obsVars, obsVals)
     }))
   }
   
-}
+
 
 ## Run inference on a Bayesian network
 ## bayesnet: a list of factor tables
@@ -283,7 +280,17 @@ observe = function(bayesnet, obsVars, obsVals)
 ## should be normalized to sum to one.
 infer = function(bayesnet, margVars, obsVars, obsVals)
 {
+  
   ## Your code here!
+  bayesnet <- observe(bayesnet,obsVars, obsVals)
+  bayesnet <- marginalize(bayesnet, margVars)
+  if(length(bayesnet) > 1){
+    for(k in 2:length(bayesnet)){
+      productNet <- productFactor(bayesnet[[k-1]], bayesnet[[k]])
+      bayesnet[[k]] <- productNet
+    }
+  }
+  return(bayesnet[[length(bayesnet)]])
 }
 
 
@@ -298,9 +305,14 @@ margVar = "smoke"
 Y <-marginalizeFactor(X, margVar)
 
 
-bayesNet1 <- createBayesNet()
-var = c("income", "exercise", "smoke", "bmi", "attack", "diabetes", "cholesterol", "angina", "stroke")
-bayesNet1 <- marginalize(bayesNet1, var)
+bayesNet <- createBayesNet()
+
+varNames = c("income", "exercise", "smoke", "bmi", "bp", "cholesterol",
+             "angina", "stroke", "attack", "diabetes")
+
+bayesNet <- infer(bayesNet, NULL, setdiff(varNames, "bp"), rep(1, 9))
+Total <- sum(bayesNet$probs)
+bayesNet$probs <- bayesNet$probs/Total
 
 
 
