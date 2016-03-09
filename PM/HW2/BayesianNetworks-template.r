@@ -9,6 +9,7 @@
 
 createBayesNet = function()
 {
+  
   var = c("income")
   A = createCPT.fromData(y,var)
   
@@ -49,8 +50,10 @@ createBayesNet = function()
   J = createCPT.fromData(y,var)
   
   
-  bayesNet = list("1" = A, "2" = B, "3" = C, "d" = D, "e" = E, "f" = F, "g" = G, "h" = H, "i" = I, "j" = J)
+  bayesNet = list("1" = A, "2" = B, "3" = C, "4" = D, "5" = E, "6" = F, "7" = G, "8" = H, "9" = I, "10" = J)
   return(bayesNet)
+  
+  
 }
 createCPT = function(varnames, probs, levelsList)
 {
@@ -157,7 +160,6 @@ productFactor = function(A, B)
   y = names(B)
   x<-x[-which(x=="probs")]
   y<-y[-which(y=="probs")]
-  #z<-intersect(x,y)
   mergedTable = merge( A,B, by = intersect(x,y) )
   mergedTable= transform(mergedTable, probs = probs.x * probs.y)
   mergedTable = subset(mergedTable,select = -c(probs.x, probs.y))
@@ -173,13 +175,21 @@ productFactor = function(A, B)
 marginalizeFactor = function(X, margVar)
 {
   ## Your code here!
+  print(margVar)
   x = names(X)
   x<-x[-which(x==margVar)]
   y<-x[-which(x=="probs")]
-  rows = subset(X,select = y)
-  marginalizedCPT = aggregate(X$probs, by=rows, FUN=sum)
-  marginalizedCPT = setNames( marginalizedCPT, c(x))
   
+  
+  marginalizedCPT = X
+  if(length(y)>0)
+  {
+    rows = subset(X,select = y)
+    marginalizedCPT = aggregate(X$probs, by=rows, FUN=sum)
+    z <- union(y,"probs")
+    colnames(marginalizedCPT) <- z
+    #marginalizedCPT = setNames( marginalizedCPT, c(x))
+  }
   return(marginalizedCPT)
 }
 
@@ -231,7 +241,7 @@ marginalize = function(bayesnet, margVars)
 {
   for(i in 1:length(margVars))
   {  
-    print(margVars[i])
+    #print(margVars[i])
     bayesnet <- marginalizebyElimination(bayesnet, margVars[i])
   }
   return(bayesnet)
@@ -242,7 +252,7 @@ marginalize = function(bayesnet, margVars)
 ## obsVars: a vector of variable names (as strings) to be observed
 ## obsVals: a vector of values for corresponding variables (in the same order)
 ##
-  ## Set the values of the observed variables. Other values for the variables
+## Set the values of the observed variables. Other values for the variables
 ## should be removed from the tables. You do not need to normalize the factors
 ## to be probability mass functions.
 observe = function(bayesnet, obsVars, obsVals){
@@ -250,7 +260,7 @@ observe = function(bayesnet, obsVars, obsVals){
     return(lapply(bayesnet, function(x){
       listVars <- intersect(colnames(x), obsVars)
       #print(listVars)
-      locations <- which(obsVars %in% listVars)
+      locations <- match(listVars, obsVars)
       listVals <- obsVals[locations]
       tempNet <- x
       n <- length(listVars)
@@ -261,10 +271,10 @@ observe = function(bayesnet, obsVars, obsVals){
       }
       tempNet
     }))
-  }
-  
+  }  
 
-
+random1 <- {}
+random <- {}
 ## Run inference on a Bayesian network
 ## bayesnet: a list of factor tables
 ## margVars: a vector of variable names to marginalize
@@ -283,26 +293,32 @@ infer = function(bayesnet, margVars, obsVars, obsVals)
   
   ## Your code here!
   bayesnet <- observe(bayesnet,obsVars, obsVals)
+  random1 <<- bayesnet
+  
   bayesnet <- marginalize(bayesnet, margVars)
+  random <<- bayesnet
   if(length(bayesnet) > 1){
     for(k in 2:length(bayesnet)){
       productNet <- productFactor(bayesnet[[k-1]], bayesnet[[k]])
       bayesnet[[k]] <- productNet
     }
   }
-  return(bayesnet[[length(bayesnet)]])
+  inferTable <-bayesnet[[length(bayesnet)]] 
+  
+  Total <- sum(inferTable$probs)
+  inferTable$probs <- inferTable$probs/Total
+  return(inferTable)
 }
 
 
 y = read.csv("/media/yogesh/19AB173F35236A3F/Courses/Spring-2016/PM/HW2/RiskFactors.csv")
 
 
-s.i = createCPT.fromData(y, c("smoke", "income"))
-var = c("income")
-i = createCPT.fromData(y, var)
-X <- productFactor(s.i,i)
-margVar = "smoke"
-Y <-marginalizeFactor(X, margVar)
+#s.i = createCPT.fromData(y, c("smoke", "income"))
+#var = c("income")
+#i = createCPT.fromData(y, var)
+#X <- productFactor(s.i,i)
+#Y <-marginalizeFactor(X, margVar)
 
 
 bayesNet <- createBayesNet()
@@ -310,9 +326,48 @@ bayesNet <- createBayesNet()
 varNames = c("income", "exercise", "smoke", "bmi", "bp", "cholesterol",
              "angina", "stroke", "attack", "diabetes")
 
-bayesNet <- infer(bayesNet, NULL, setdiff(varNames, "bp"), rep(1, 9))
-Total <- sum(bayesNet$probs)
-bayesNet$probs <- bayesNet$probs/Total
+#infer1 <- infer(bayesNet, NULL, setdiff(varNames, "bp"), rep(1, 9))
 
+
+#No of Total Probabilities used in the Bayesian Network  1 b)
+#infer2 <- length(infer(bayesNet, NULL, NULL, c())$probs)
+
+#2b
+# infer2b <- infer(bayesNet, setdiff(varNames, c("diabetes", "bp","cholesterol","bmi")), c("bp","cholesterol","bmi"), c(1,1,3))
+# print(infer3)
+# infer4<- xtable(infer3)
+# print.xtable(infer4, type="latex", file="/media/yogesh/19AB173F35236A3F/Courses/Spring-2016/PM/HW2/filename.tex")
+
+
+#3
+disTable <- c("angina", "diabetes", "stroke", "attack")
+
+
+
+dis_angina<-{}
+dis_diabetes<-{}
+dis_stroke<-{}
+dis_attack<-{}
+for(i in 1:8)
+{
+  temp <-infer(bayesNet, setdiff(varNames, c("angina","income")), c("income"), c(i))
+  temp <- temp[temp[, "angina"] == 1,"probs"] 
+  dis_angina<-    append(dis_angina, list(temp))
+  temp <-infer(bayesNet, setdiff(varNames, c("diabetes","income")), c("income"), c(i))
+  temp <- temp[temp[, "diabetes"] == 1,"probs"] 
+  dis_diabetes<-  append(dis_diabetes, list(temp))
+  temp <-infer(bayesNet, setdiff(varNames, c("stroke","income")), c("income"), c(i))
+  temp <- temp[temp[, "stroke"] == 1,"probs"] 
+  dis_stroke<-    append(dis_stroke, list(temp))
+  temp <-infer(bayesNet, setdiff(varNames, c("attack","income")), c("income"), c(i))
+  temp <- temp[temp[, "attack"] == 1,"probs"] 
+  dis_attack<-    append(dis_attack, list(temp))
+}
+
+plot(c(1:8),dis_angina, type='l', ylim = c(0,0.16), lwd=3, col="green")
+lines(c(1:8),dis_stroke, col='red', lwd=3)
+lines(c(1:8),dis_diabetes, col='blue', lwd=3)
+lines(c(1:8),dis_attack, col='yellow', lwd=3)
+legend('topright', c("angina", "stroke","diabetes", "attack"), col = c("green", "red", "blue", "yellow"), lwd = 3)
 
 
