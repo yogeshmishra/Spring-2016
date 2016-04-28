@@ -3,8 +3,17 @@ calculateKernel <- function(x,y, lambda, epsilon){
 }
   
 
+createCovarianceMatrixOptimized = function(lambda, dataPoints_x, dataPoints_y, epsilon){
+  nrow = length(dataPoints_x)
+  ncol = length(dataPoints_y)
+  Cmatrix = matrix(0, nrow, ncol)
+  difference = outer(dataPoints_x, dataPoints_y, function(dataPoints_x, dataPoints_y) dataPoints_y - dataPoints_x)
+  Cmatrix = exp(-0.5*difference*difference/lambda) + epsilon*1.0*(abs(difference)==0)
+  return(Cmatrix)
+}
+
 createCovarianceMatrix <- function( lambda, dataPoints_x, dataPoints_y, epsilon){
-  Cmatrix = matrix( c(rep(1:length(dataPoints_x))),nrow=length(dataPoints_x),ncol=length(dataPoints_y))
+  Cmatrix = matrix( c(1),nrow=length(dataPoints_x),ncol=length(dataPoints_y))
   for(x in 1:(nrow(Cmatrix))){
     for(y in 1:(ncol(Cmatrix))){
         Cmatrix[x,y] = calculateKernel(dataPoints_x[x],dataPoints_y[y],lambda, epsilon)
@@ -48,7 +57,7 @@ epsilon = rnorm(sample_size, 0, sigma)
 output_y = sin(input_x)
 
 output_y = output_y + epsilon
-plot(input_x,output_y,col=colors[2],ylim =c(-1,1),   main=c("Sin(x)"))    #raw Data
+plot(input_x,output_y,col=colors[2],ylim =c(-1.2,1.2),   main=c("Sin(x)"))    #raw Data
 
 
 input_x1  = seq(0,7,length.out=50)
@@ -87,4 +96,47 @@ lines(input_x1,posterior_mean,col=colors[3],lwd=3)
 
 legend("bottomright", c("GP Regression", "Predictive Interval"),
        col = c("blue", "grey"), lwd=c(3,3,10),cex=0.6)
+
+#3 a)
+
+SaltLakeTemperatureData = read.csv("/media/yogesh/19AB173F35236A3F/Courses/Spring-2016/PM/HW4/SaltLakeTemperatures.csv")
+SaltLakeTemperatureData = SaltLakeTemperatureData[!SaltLakeTemperatureData$AVEMAX == -9999,]
+dates = SaltLakeTemperatureData$DATE
+year =   floor(dates/10000)
+month =  floor((dates/100)%%100)
+SaltLakeTemperatureData$MONTH = month
+SaltLakeTemperatureData$YEAR = year
+averageTemperature = SaltLakeTemperatureData$AVEMAX
+
+plot(SaltLakeTemperatureData$MONTH,SaltLakeTemperatureData$AVEMAX, col=colors[2],ylim =c(0,110),   main=c("Average Max temperature"))    #raw Data
+
+month_star = floor(seq(1,12,length.out=200))
+lambda[3] = 1.59
+kernelMatrix_xx <- createCovarianceMatrixOptimized(lambda[x], month, month, small_value)
+kernelMatrix_xx1 <- createCovarianceMatrixOptimized(lambda[x], month, month_star, small_value)
+kernelMatrix_x1x <- t(kernelMatrix_xx1)
+kernelMatrix_x1x1 <- createCovarianceMatrixOptimized(lambda[x], month_star, month_star, small_value)
+mean_temperature  <- SaltLakeTemperatureData$AVEMAX
+mean_temperature <- kernelMatrix_x1x %*% ((chol2inv(chol(kernelMatrix_xx + 0.25*diag(nrow(kernelMatrix_xx))))) %*% mean_temperature)
+
+variance_temperature <- kernelMatrix_x1x1 - kernelMatrix_x1x%*%(chol2inv(chol(kernelMatrix_xx + 0.25*diag(nrow(kernelMatrix_xx)))))%*%kernelMatrix_xx1
+variance_temperature <- diag(variance_temperature)*5000
+
+
+t = seq(1,12,length.out=200)
+up = mean_temperature + 1.96 * sqrt(variance_temperature)
+down = mean_temperature - 1.96 * sqrt(variance_temperature)
+t.rev = t[length(t):1];
+down = down[length(down):1];
+
+
+polygon(x=c(t,t.rev), y=c(up,down), col="grey", border=NA)
+lines(month_star,mean_temperature,col=colors[3],lwd=3)
+
+legend("bottomright", c("GP Regression", "Predictive Interval"),
+       col = c("blue", "grey"), lwd=c(3,3,10),cex=0.6)
+
+
+#3 b)
+
 
