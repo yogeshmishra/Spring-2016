@@ -67,7 +67,7 @@ From the Above Plot we can infer that by increasing the value of $\lambda$ curve
 
 I got the following plots for the $\lambda=1.59$ and $\sigma=0.5$.
 
-```{r pressure, echo=FALSE}
+```{r 1, echo=FALSE}
 
 #2:
 sample_size = 50
@@ -123,7 +123,7 @@ legend("bottomright", c("True Data", "Posterior Mean", "Predictive Interval"),
 
 3 a)
 I got the below plots with $\lambda=1.1$ and $\sigma=0.5$.
-```{r pressure, echo=FALSE}
+```{r 3, echo=FALSE}
 
 SaltLakeTemperatureData = read.csv("/media/yogesh/19AB173F35236A3F/Courses/Spring-2016/PM/HW4/SaltLakeTemperatures.csv")
 SaltLakeTemperatureData = SaltLakeTemperatureData[!SaltLakeTemperatureData$AVEMAX == -9999,]
@@ -168,3 +168,54 @@ legend("bottomright", c("Posterior mean", "Predictive Interval"),
 
 ```
 3b)
+```{r 4, echo=FALSE}
+lambda[3] = 1
+x = 3
+samples = 100
+averageTemperature = SaltLakeTemperatureData$AVEMAX
+month = SaltLakeTemperatureData$MONTH
+month_star = seq(1,12,length.out=samples) 
+year = SaltLakeTemperatureData$YEAR
+year = year  - min(year)  # taking  lowest year as the base
+
+# Creating the Co-Variance Matrix
+kernelMatrix_11 = createCovarianceMatrixOptimized(lambda[x], month, month, small_value)
+tmp = sweep(kernelMatrix_11,2,year,FUN='*')
+tmp = sweep(tmp,1,year,FUN='*')
+kernelMatrix_11 = tmp + kernelMatrix_11 + 0.25*diag(length(month))
+inverse = chol2inv(chol(kernelMatrix_11))
+kernelMatrix_12 = createCovarianceMatrixOptimized(lambda[x], month, month_star, small_value)
+kernelMatrix_13 = sweep(kernelMatrix_12 ,1,year,FUN='*')
+
+kernelMatrix_21 = t(kernelMatrix_12)
+kernelMatrix_22 = createCovarianceMatrixOptimized(lambda[x],month_star,month_star, small_value)
+kernelMatrix_23 = matrix(0.0,samples,samples)
+
+kernelMatrix_31 = t(kernelMatrix_13)
+kernelMatrix_32 = kernelMatrix_23
+kernelMatrix_33 = kernelMatrix_22
+
+kernelMatrix_xx1 = cbind(kernelMatrix_12,kernelMatrix_13)
+kernelMatrix_x1x = rbind(kernelMatrix_21, kernelMatrix_31)
+kernelMatrix_x1x1 = cbind(rbind(kernelMatrix_22,kernelMatrix_32), rbind(kernelMatrix_23,kernelMatrix_33))
+
+
+mean_temperature <- kernelMatrix_x1x %*% inverse %*% averageTemperature
+variance_temperature <- kernelMatrix_x1x1 - (kernelMatrix_x1x %*% inverse %*% kernelMatrix_xx1)
+variance_temperature <- diag(variance_temperature)*5000
+
+mean_temperature_f0 <- mean_temperature[1:100]
+mean_temperature_f1 <- mean_temperature[101:200]
+variance_temperature_f0 <- variance_temperature[1:100]
+variance_temperature_f1 <- variance_temperature[101:200]
+
+t = seq(1,12,length.out=samples)
+plot(t, mean_temperature_f1, col = 'blue', lwd=2, main=expression(paste("Posterior Mean")),
+     xlab="months",ylab="average change in Temperature" , type = "l")
+persp(month_star, sort(unique(year)), mean_temperature_f0 + outer(mean_temperature_f1
+      , sort(unique(year)), '*'),xlab = "Month", ylab = "Year", 
+      zlab = "temperature Growth ",theta = 110)
+
+
+
+```
