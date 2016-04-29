@@ -122,8 +122,7 @@ legend("bottomright", c("True Data", "Posterior Mean", "Predictive Interval"),
 
 
 3 a)
-
-I took 100 samples 
+I got the below plots with $\lambda=1.1$ and $\sigma=0.5$.
 ```{r pressure, echo=FALSE}
 
 SaltLakeTemperatureData = read.csv("/media/yogesh/19AB173F35236A3F/Courses/Spring-2016/PM/HW4/SaltLakeTemperatures.csv")
@@ -168,4 +167,4 @@ legend("bottomright", c("Posterior mean", "Predictive Interval"),
 
 
 ```
-
+3b)
