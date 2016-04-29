@@ -73,7 +73,7 @@ kernelMatrix_x1x1 <- createCovarianceMatrix(lambda[x], input_x1, input_x1, small
 
 
 posterior_mean <- t(kernelMatrix_xx1)%*%(chol2inv(chol(kernelMatrix_xx + 0.25*diag(sample_size)))%*%(output_y))
-
+lines(input_x1,posterior_mean,col=colors[3],lwd=3)
 
  
 
@@ -111,15 +111,18 @@ averageTemperature = SaltLakeTemperatureData$AVEMAX
 plot(SaltLakeTemperatureData$MONTH,SaltLakeTemperatureData$AVEMAX, col=colors[2],ylim =c(0,110),   main=c("Average Max temperature"))    #raw Data
 
 month_star = floor(seq(1,12,length.out=200))
-lambda[3] = 1.59
+lambda[3] = 2
 kernelMatrix_xx <- createCovarianceMatrixOptimized(lambda[x], month, month, small_value)
 kernelMatrix_xx1 <- createCovarianceMatrixOptimized(lambda[x], month, month_star, small_value)
-kernelMatrix_x1x <- t(kernelMatrix_xx1)
+kernelMatrix_x1x <- createCovarianceMatrixOptimized(lambda[x],  month_star, month, small_value)
 kernelMatrix_x1x1 <- createCovarianceMatrixOptimized(lambda[x], month_star, month_star, small_value)
+kernelMatrix_x1x1_new <- createCovarianceMatrix(lambda[x], month_star, month_star, small_value)
 mean_temperature  <- SaltLakeTemperatureData$AVEMAX
-mean_temperature <- kernelMatrix_x1x %*% ((chol2inv(chol(kernelMatrix_xx + 0.25*diag(nrow(kernelMatrix_xx))))) %*% mean_temperature)
+inverse = chol2inv(chol(kernelMatrix_xx + 0.25*diag(nrow(kernelMatrix_xx))))
+mean_temperature <- kernelMatrix_x1x %*% inverse %*% mean_temperature
 
-variance_temperature <- kernelMatrix_x1x1 - kernelMatrix_x1x%*%(chol2inv(chol(kernelMatrix_xx + 0.25*diag(nrow(kernelMatrix_xx)))))%*%kernelMatrix_xx1
+variance_temperature <- kernelMatrix_x1x1 - (kernelMatrix_x1x %*% inverse %*% kernelMatrix_xx1)
+
 variance_temperature <- diag(variance_temperature)*5000
 
 
@@ -131,12 +134,66 @@ down = down[length(down):1];
 
 
 polygon(x=c(t,t.rev), y=c(up,down), col="grey", border=NA)
-lines(month_star,mean_temperature,col=colors[3],lwd=3)
+lines(month_star,mean_temperature,col=colors[4],lwd=3)
 
 legend("bottomright", c("GP Regression", "Predictive Interval"),
        col = c("blue", "grey"), lwd=c(3,3,10),cex=0.6)
 
 
 #3 b)
+
+
+lambda[3] = 1
+x = 3
+averageTemperature = SaltLakeTemperatureData$AVEMAX
+month = SaltLakeTemperatureData$MONTH
+month_star = seq(1,12,length.out=200) 
+year = SaltLakeTemperatureData$AVEMAX
+year = year  - min(year)  # taking  lowest year as the base
+
+# Creating the Co-Variance Matrix
+kernelMatrix_11 = createCovarianceMatrixOptimized(lambda[x], month, month, small_value)
+tmp = sweep(kernelMatrix_11,2,year,FUN='*')
+tmp = sweep(tmp,1,year,FUN='*')
+kernelMatrix_11 = tmp + kernelMatrix_11 + 0.25*diag(length(month))
+inverse = chol2inv(chol(kernelMatrix_11))
+kernelMatrix_12 = createCovarianceMatrixOptimized(lambda[x], month, month_star, small_value)
+kernelMatrix_13 = sweep(kernelMatrix_12 ,1,year,FUN='*')
+
+kernelMatrix_21 = t(kernelMatrix_12)
+kernelMatrix_22 = createCovarianceMatrixOptimized(lambda[x],month_star,month_star, small_value)
+kernelMatrix_23 = matrix(0.0,200,200)
+
+kernelMatrix_31 = t(kernelMatrix_13)
+kernelMatrix_32 = kernelMatrix_23
+kernelMatrix_33 = kernelMatrix_22
+
+kernelMatrix_xx1 = cbind(kernelMatrix_12,kernelMatrix_13)
+kernelMatrix_x1x = rbind(kernelMatrix_21, kernelMatrix_31)
+kernelMatrix_x1x1 = cbind(rbind(kernelMatrix_22,kernelMatrix_32), rbind(kernelMatrix_23,kernelMatrix_33))
+
+
+mean_temperature <- kernelMatrix_x1x %*% inverse %*% averageTemperature
+variance_temperature <- kernelMatrix_x1x1 - (kernelMatrix_x1x %*% inverse %*% kernelMatrix_xx1)
+variance_temperature <- diag(variance_temperature)*5000
+
+mean_temperature_f0 <- mean_temperature[1:200]
+mean_temperature_f1 <- mean_temperature[201:400]
+variance_temperature_f0 <- variance_temperature[1:200]
+variance_temperature_f1 <- variance_temperature[201:400]
+
+t = seq(1,12,length.out=200)
+up = post.mu.f1 + 1.96 * sqrt(post.cov.f1)
+down = post.mu.f1 - 1.96 * sqrt(post.cov.f1)
+t.rev = t[length(t):1]
+down = down[length(down):1]
+
+plot(t,rep(0,sample_num),ylim=range(min(mean_temperature_f1),max(mean_temperature_f1)),type="l",lty=2,
+     main=expression(paste("Posterior mean for f"[1]," with 95% confidence")),
+     xlab="months",ylab=expression(paste(mu,"*")))
+
+s = seq(0,108);
+lines(t, mean_temperature_f1, col = 'blue', lwd=2)
+
 
 
